@@ -12,15 +12,8 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{
-      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
-      color:var(--text); background:#0b1d1a; overflow:hidden;
-    }
-    .bg{
-      position:fixed; inset:0; z-index:-2;
-      background:#000 url('assets/bg.jpg') center/cover no-repeat fixed;
-      filter:saturate(1.05) contrast(1.05);
-    }
+    body{margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif; color:var(--text); background:#0b1d1a; overflow:hidden}
+    .bg{position:fixed; inset:0; z-index:-2; background:#000 url('assets/bg.jpg') center/cover no-repeat fixed; filter:saturate(1.05) contrast(1.05)}
     .bg::after{content:""; position:absolute; inset:0; background:var(--bg-overlay)}
 
     .wrap{ height:100%; display:grid; grid-template-rows:auto 1fr auto; }
@@ -28,29 +21,15 @@
     header .badge{background:rgba(0,0,0,.45); padding:6px 10px; border:1px solid rgba(255,255,255,.1); border-radius:999px; font-size:.85rem; color:var(--muted)}
     header h1{ font-size:1.25rem; margin:0; letter-spacing:.3px; text-shadow:0 3px 12px rgba(0,0,0,.5); }
 
-    .grid{
-      display:grid; grid-template-columns: repeat(5, minmax(200px,1fr));
-      gap:16px; padding:10px 22px 22px; height:100%; align-content:start; overflow:auto;
-    }
-    .card{
-      background:var(--card); backdrop-filter: blur(6px);
-      border:1px solid rgba(255,255,255,.08); border-radius:16px; box-shadow:var(--shadow);
-      display:flex; flex-direction:column; padding:16px; min-height:230px;
-    }
+    .grid{ display:grid; grid-template-columns: repeat(3, minmax(240px,1fr)); gap:16px; padding:10px 22px 22px; height:100%; align-content:start; overflow:auto; }
+    .card{ background:var(--card); backdrop-filter: blur(6px); border:1px solid rgba(255,255,255,.08); border-radius:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; padding:16px; min-height:230px; }
     .card h2{ font-size:1rem; font-weight:600; margin:0 0 8px; color:var(--muted); }
     .lock-illustration{ height:74px; display:flex; align-items:center; justify-content:center; margin:2px 0 8px; opacity:.95 }
     .muted{ color:var(--muted); font-size:.9rem }
     .row{ display:flex; gap:10px; align-items:center; margin-top:auto }
-    input[type="text"]{
-      flex:1; padding:12px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.15);
-      background: rgba(2,8,10,.6); color:var(--text); font-size:1rem; outline:none
-    }
+    input[type="text"]{ flex:1; padding:12px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.15); background: rgba(2,8,10,.6); color:var(--text); font-size:1rem; outline:none }
     input::placeholder{ color:#c9ded5aa }
-    button{
-      padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.15);
-      background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#062315; font-weight:700; letter-spacing:.4px; cursor:pointer;
-      transition:.2s transform ease, .2s filter ease; box-shadow:0 8px 14px rgba(0,0,0,.25)
-    }
+    button{ padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.15); background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#062315; font-weight:700; letter-spacing:.4px; cursor:pointer; transition:.2s transform ease, .2s filter ease; box-shadow:0 8px 14px rgba(0,0,0,.25) }
     button:hover{ transform:translateY(-1px) }
     button:disabled{ filter:grayscale(1) brightness(.8); cursor:not-allowed }
     .status{ margin-top:10px; min-height:22px; font-size:.9rem }
@@ -65,27 +44,14 @@
     @media (max-width:1100px){ .grid{ grid-template-columns: repeat(2, minmax(240px,1fr)); } }
     @media (max-width:640px){ .grid{ grid-template-columns: 1fr; } body{overflow:auto} }
 
-    .help {
-      position: fixed;
-      right: 14px;
-      bottom: 84px;
-      background: rgba(0,0,0,.6);
-      border:1px solid rgba(255,255,255,.12);
-      color: var(--muted);
-      padding:8px 12px;
-      border-radius:12px;
-      font-size:.85rem
-    }
-    @media (max-width:640px){
-      .help{ left:14px; right:auto; bottom:14px; }
-    }
+    /* dica afastada do botão reiniciar */
+    .help { position: fixed; right: 14px; bottom: 84px; background: rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.12); color: var(--muted); padding:8px 12px; border-radius:12px; font-size:.85rem }
+    @media (max-width:640px){ .help{ left:14px; right:auto; bottom:14px; } }
 
+    /* modal final */
     .modal{ position:fixed; inset:0; display:none; place-items:center; backdrop-filter: blur(3px); }
     .modal.show{ display:grid }
-    .modal .box{
-      max-width:720px; margin:20px; background:rgba(4,12,10,.85); border:1px solid rgba(255,255,255,.12);
-      border-radius:20px; padding:28px; text-align:center; box-shadow:var(--shadow)
-    }
+    .modal .box{ max-width:720px; margin:20px; background:rgba(4,12,10,.85); border:1px solid rgba(255,255,255,.12); border-radius:20px; padding:28px; text-align:center; box-shadow:var(--shadow) }
     .modal h3{ margin:0 0 8px; font-size:1.6rem }
     .modal p{ margin:0 0 16px; color:var(--muted) }
   </style>
@@ -119,18 +85,22 @@
   </div>
 
   <script>
+    // agora com 6 cadeados
     const LOCKS = [
       { id: 1, titulo: 'Cadeado 1', senha: 'GOLPE',   placeholder:'Digite a senha do 1º' },
       { id: 2, titulo: 'Cadeado 2', senha: 'CEMCC',   placeholder:'Senha do 2º' },
       { id: 3, titulo: 'Cadeado 3', senha: 'DESVIO',  placeholder:'Senha do 3º' },
       { id: 4, titulo: 'Cadeado 4', senha: 'SUBORNO', placeholder:'Senha do 4º' },
-      { id: 5, titulo: 'Cadeado 5', senha: '212',     placeholder:'Senha final (números)' },
+      { id: 5, titulo: 'Cadeado 5', senha: '212',     placeholder:'Senha do 5º' },
+      { id: 6, titulo: 'Cadeado 6', senha: '4310',    placeholder:'Senha final' },
     ];
 
+    // normaliza (ignora acentos/maiúsculas)
     const normalize = v => (v||'').toString().trim().toUpperCase()
       .normalize('NFD').replace(/\p{Diacritic}/gu,'');
 
-    const LS_KEY = 'cadeados-progress-v1';
+    // persistência local
+    const LS_KEY = 'cadeados-progress-v2'; // novo key p/ não conflitar com a versão anterior
     const loadState = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; } };
     const saveState = (s) => localStorage.setItem(LS_KEY, JSON.stringify(s));
     let state = loadState();
@@ -160,7 +130,7 @@
 
       LOCKS.forEach((lock, idx) => {
         const opened = !!state[lock.id];
-        const active = idx === openedCount;
+        const active = idx === openedCount; // libera apenas o próximo
 
         const card = document.createElement('section');
         card.className = 'card';
@@ -186,7 +156,7 @@
           if(val === normalize(lock.senha)){
             state[lock.id] = true; saveState(state);
             status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
-            setTimeout(() => render(), 300);
+            setTimeout(() => render(), 250);
           } else {
             status.innerHTML = '<span class="err">Senha incorreta.</span>';
           }
@@ -197,17 +167,20 @@
         grid.appendChild(card);
       });
 
+      // progresso (6 bolinhas)
       LOCKS.forEach(l=>{
         const dot = document.createElement('div');
-        dot.className='dot'+(state[l.id]?' on':''); progress.appendChild(dot);
+        dot.className='dot'+(state[l.id]?' on':'');
+        progress.appendChild(dot);
       });
 
+      // quando todos abertos → mensagem final
       if(LOCKS.every(l => state[l.id])) modal.classList.add('show');
       else modal.classList.remove('show');
     }
 
     document.getElementById('btnReset').addEventListener('click', ()=>{
-      state={}; saveState(state); render();
+      state = {}; saveState(state); render();
     });
     closeModal.addEventListener('click', ()=> modal.classList.remove('show'));
 
