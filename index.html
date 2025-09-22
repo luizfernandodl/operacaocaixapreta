@@ -21,8 +21,14 @@
     .bg{ position:fixed; inset:0; z-index:-2; background:#000 url('assets/bg.jpg') center/cover no-repeat fixed; filter:saturate(1.05) contrast(1.05) }
     .bg::after{ content:""; position:absolute; inset:0; background:var(--bg-overlay) }
 
-    /* Layout base: topo (miniaturas), centro (cadeado atual), rodapé */
-    .wrap{ height:100dvh; display:grid; grid-template-rows:auto 1fr auto }
+    /* Layout base: 4 linhas (header, thumbs, stage, footer) */
+    .wrap{
+      height:100dvh;
+      height:100vh;              /* fallback */
+      display:grid;
+      grid-template-rows:auto auto 1fr auto;  /* <<< CORRIGIDO */
+      min-height:100dvh;
+    }
 
     header{ padding:12px 18px; display:flex; align-items:center; gap:10px }
     header .badge{ background:rgba(0,0,0,.45); padding:6px 10px; border-radius:999px; font-size:.85rem; color:var(--muted) }
@@ -49,7 +55,6 @@
       0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(114,241,179,.0)); }
       50%{ transform:scale(1.06); filter:drop-shadow(0 0 14px rgba(114,241,179,.5)); }
     }
-    /* Selo numérico */
     .num{
       position:absolute; top:-6px; right:-6px;
       min-width:18px; height:18px; padding:0 4px;
@@ -60,7 +65,11 @@
     }
 
     /* Palco central: cadeado atual grandão */
-    .stage{ display:grid; place-items:center; min-height:58dvh; padding:12px; overflow:auto }
+    .stage{
+      display:grid; place-items:center;
+      min-height:58dvh;           /* garante altura visível */
+      padding:12px; overflow:auto
+    }
     .card{
       background:transparent; border:none; box-shadow:none;
       display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; padding:16px;
@@ -146,10 +155,10 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    const LS_KEY = 'cadeados-topbar-v2';
+    const LS_KEY = 'cadeados-topbar-v3';
     let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"idx":0}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
-    const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\\p{Diacritic}/gu,'');
+    const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
 
     const thumbs = document.getElementById('thumbs');
     const stage  = document.getElementById('stage');
@@ -234,9 +243,9 @@
       const status = card.querySelector('#status');
 
       function animateFlyToTop(){
-        const big = document.getElementById('bigLock').querySelector('svg');
-        const dest = document.getElementById('thumb-' + state.idx).querySelector('svg');
-        if(!big || !dest) return;
+        const big = document.getElementById('bigLock')?.querySelector('svg');
+        const dest = document.getElementById('thumb-' + state.idx)?.querySelector('svg');
+        if(!big || !dest){ state.idx += 1; save(); render(); return; } // fallback seguro
 
         const br = big.getBoundingClientRect();
         const dr = dest.getBoundingClientRect();
@@ -261,8 +270,14 @@
           { transform:`translate(${br.left+dx}px, ${br.top+dy}px) scale(${scaleX}, ${scaleY})`, opacity:1 }
         ], { duration: 320, easing:'ease-in-out' }).onfinish = () => {
           ghost.remove();
+          // marca miniatura como aberta
           const slot = document.getElementById('thumb-' + state.idx);
-          if (slot) slot.innerHTML = lockSVG({open:true}) + `<div class="num">${state.idx+1}</div>`;
+          if (slot){
+            slot.innerHTML = lockSVG({open:true});
+            const badge = document.createElement('div');
+            badge.className = 'num'; badge.textContent = (state.idx+1);
+            slot.appendChild(badge);
+          }
           state.idx += 1; save();
           render();
         };
