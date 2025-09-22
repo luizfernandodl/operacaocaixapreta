@@ -11,69 +11,61 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
-      color:var(--text); background:#0b1d1a; overflow:hidden
-    }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif; color:var(--text); background:#0b1d1a; overflow:hidden }
 
     /* Fundo */
     .bg{ position:fixed; inset:0; z-index:-2; background:#000 url('assets/bg.jpg') center/cover no-repeat fixed; filter:saturate(1.05) contrast(1.05) }
     .bg::after{ content:""; position:absolute; inset:0; background:var(--bg-overlay) }
 
-    /* Layout base */
-    .wrap{ height:100dvh; display:grid; grid-template-rows:auto 1fr auto }
-
+    /* Layout */
+    .wrap{ height:100%; display:grid; grid-template-rows:auto 1fr auto }
     header{ padding:18px 22px; display:flex; align-items:center; gap:12px }
     header .badge{ background:rgba(0,0,0,.45); padding:6px 10px; border-radius:999px; font-size:.85rem; color:var(--muted) }
     header h1{ margin:0; font-size:1.25rem; text-shadow:0 3px 12px rgba(0,0,0,.5) }
 
-    /* Palco: todos os cadeados visíveis, pequenos, “parte do cenário” */
-    .stage{
-      position:relative;
-      min-height:60dvh;           /* garante altura útil */
-      height:100%;                /* ocupa o 1fr da grid */
-      overflow:hidden;
-    }
-    .lock-node{
+    /* Palco: todos os cadeados espalhados */
+    .stage{ position:relative; height:calc(100vh - 140px); overflow:hidden; }
+    .lock-card{
       position:absolute; transform: translate(-50%, -50%);
-      display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
-      padding:6px; background:transparent; border:none; box-shadow:none;
+      display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;
+      padding:10px; background:transparent; border:none; box-shadow:none; 
       animation: pop 220ms ease-out;
     }
     @keyframes pop{ from{ transform:translate(-50%,-55%) scale(.95); opacity:0 } to{ transform:translate(-50%,-50%) scale(1); opacity:1 } }
 
-    .icon{ font-size:32px; line-height:1; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
-    .title{ font-size:.9rem; color:var(--muted); text-shadow:0 0 6px rgba(0,0,0,.8) }
+    .title, .muted, .status { text-shadow:0 0 6px rgba(0,0,0,.8) }
+    .title{ font-weight:600 }
 
-    /* Campo aparece só no ativo */
-    .row{ display:flex; gap:8px; align-items:center; width:min(360px,86vw) }
+    .row{ display:flex; gap:8px; align-items:center; width:min(420px,90vw) }
     input[type="text"]{
       flex:1; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.25);
       background:rgba(0,0,0,.35); color:var(--text); font-size:1rem; outline:none
     }
+    input[disabled]{ opacity:.6; cursor:not-allowed }
     button{
       padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.15);
       background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#062315; font-weight:700; cursor:pointer
     }
-    .status{ min-height:18px; font-size:.9rem; text-shadow:0 0 6px rgba(0,0,0,.8) }
+    button[disabled]{ opacity:.6; cursor:not-allowed }
+    .status{ min-height:22px; font-size:.95rem }
     .ok{ color:var(--ok) } .err{ color:var(--err) }
 
     footer{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 22px }
     .progress{ display:flex; gap:8px; align-items:center }
-    .dot{ width:12px; height:12px; border-radius:50%; border:2px solid #72f1b3aa; background:transparent }
+    .dot{ width:14px; height:14px; border-radius:50%; border:2px solid #72f1b3aa; background:transparent }
     .dot.on{ background:var(--accent) }
     .reset{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,.18) }
 
     .help{ position:fixed; right:14px; bottom:84px; background:rgba(0,0,0,.6); color:var(--muted); padding:8px 12px; border-radius:12px; font-size:.85rem }
-    @media (max-width:640px){
-      .help{ left:14px; right:auto; bottom:14px }
-      .icon{ font-size:28px }
-    }
+    @media (max-width:640px){ .help{ left:14px; right:auto; bottom:14px } }
 
     /* Modal final */
     .modal{ position:fixed; inset:0; display:none; place-items:center; backdrop-filter:blur(4px) }
     .modal.show{ display:grid }
     .modal .box{ background:#061914cc; color:var(--text); padding:28px; border-radius:16px; text-align:center; max-width:90% }
+
+    /* Lock SVG beleza extra */
+    .lock svg{ filter: drop-shadow(0 6px 18px rgba(0,0,0,.35)); }
   </style>
 </head>
 <body>
@@ -93,7 +85,7 @@
     </footer>
   </div>
 
-  <div class="help">Dica: só o cadeado ativo mostra o campo para digitar.</div>
+  <div class="help">Dica: as senhas seguem a ordem dos cadeados, um por vez.</div>
 
   <!-- Modal final -->
   <div class="modal" id="congrats">
@@ -114,11 +106,11 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    const LS_KEY = 'cadeados-emoji-spread-v2';
+    const LS_KEY = 'cadeados-spread-v1';
     let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"opened":{},"pos":{}}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
 
-    const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\\p{Diacritic}/gu,'');
+    const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
 
     const stage = document.getElementById('stage');
     const progress = document.getElementById('progress');
@@ -127,19 +119,50 @@
     document.getElementById('btnReset').onclick = () => { state={opened:{}, pos:{}}; save(); render(); };
     document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
 
-    // Posições “semi-fixas” salvas (para manter visual ao recarregar)
+    // Cadeado estiloso (gradiente + arco)
+    function prettyLockSVG(style='closed'){
+      const open = style === 'open';
+      const active = style === 'active';
+      // cores reativas
+      const gradTop = active ? '#d6ffe9' : open ? '#bff5d7' : '#c8f1e0';
+      const gradBot = active ? '#39d995' : open ? '#31c788' : '#34b184';
+      const ringTop = '#ffffff', ringBot = '#dff1ea';
+      const strokeBody = active ? '#0e4a36' : '#0b3b2d';
+
+      return `
+      <svg viewBox="0 0 64 80" width="150" height="180" role="img" aria-label="Cadeado" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${gradTop}"/>
+            <stop offset="100%" stop-color="${gradBot}"/>
+          </linearGradient>
+          <linearGradient id="ringGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${ringTop}"/>
+            <stop offset="100%" stop-color="${ringBot}"/>
+          </linearGradient>
+        </defs>
+        ${open
+          ? `<path d="M48 30 v-8 a16 16 0 0 0-32 0" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
+          : `<path d="M42 22 v-4 a16 16 0 0 0-32 0 v12" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`}
+        <rect x="8" y="28" width="48" height="42" rx="10" fill="url(#bodyGrad)" stroke="${strokeBody}" stroke-width="2" />
+        <circle cx="32" cy="46" r="4" fill="${strokeBody}"/>
+      </svg>`;
+    }
+
+    // Gera posições "semi-fixas" (espalhadas) e guarda no localStorage
     function getPositionFor(id){
       if(state.pos[id]) return state.pos[id];
-      const min = 12, max = 88; // evita bordas/cabeçalho/rodapé
-      const triesMax = 60;
+      // pontos “seguros” (evita bordas/cabeçalho/rodapé)
+      const min = 12, max = 88;
+      const triesMax = 40;
       let x, y, tries = 0;
 
-      function farEnough(px,py){
+      function isFarFromOthers(px,py){
         for(const k in state.pos){
           const [ox,oy] = state.pos[k];
           const dx = px-ox, dy = py-oy;
-          const d = Math.hypot(dx,dy);
-          if(d < 14) return false; // separação mínima
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if(d < 18) return false; // distancia mínima em porcentagem (tela)
         }
         return true;
       }
@@ -148,7 +171,7 @@
         x = Math.floor(min + Math.random()*(max-min));
         y = Math.floor(min + Math.random()*(max-min));
         tries++;
-      } while(!farEnough(x,y) && tries<triesMax);
+      } while(!isFarFromOthers(x,y) && tries<triesMax);
 
       state.pos[id] = [x,y];
       save();
@@ -159,6 +182,7 @@
       stage.innerHTML = '';
       progress.innerHTML = '';
 
+      // índice do próximo a abrir
       const openedCount = LOCKS.filter(l => state.opened[l.id]).length;
 
       // progresso
@@ -171,63 +195,61 @@
       // terminou?
       if (openedCount >= LOCKS.length) { modal.classList.add('show'); return; }
 
+      // cria todos os cadeados espalhados
       LOCKS.forEach((lock, idx) => {
         const opened = !!state.opened[lock.id];
-        const active = idx === openedCount; // só esse mostra o campo
+        const active = idx === openedCount; // apenas o próximo fica liberado
 
         const [px, py] = getPositionFor(lock.id);
-        const node = document.createElement('section');
-        node.className = 'lock-node';
-        node.style.left = px + '%';
-        node.style.top  = py + '%';
+        const card = document.createElement('section');
+        card.className = 'lock-card';
+        card.style.left = px + '%';
+        card.style.top  = py + '%';
 
-        const icon = opened ? '🔓' : '🔒';
-        node.innerHTML = `
-          <div class="icon" aria-hidden="true">${icon}</div>
+        // estilo do ícone conforme estado
+        const iconStyle = opened ? 'open' : (active ? 'active' : 'closed');
+
+        card.innerHTML = `
+          <div class="lock">${prettyLockSVG(iconStyle)}</div>
           <div class="title">${lock.titulo}</div>
-          <div class="status" aria-live="polite"></div>
+          <div class="muted" aria-live="polite">${opened ? 'Aberto!' : (active ? 'Ativo: digite a senha' : 'Bloqueado até abrir o anterior')}</div>
+          <div class="row">
+            <input ${opened || !active ? 'disabled' : ''} type="text" autocomplete="off" placeholder="Senha do ${idx+1}º" aria-label="Senha do ${lock.titulo}">
+            <button ${opened || !active ? 'disabled' : ''}>Abrir</button>
+          </div>
+          <div class="status"></div>
         `;
 
-        const status = node.querySelector('.status');
+        const input = card.querySelector('input');
+        const btn = card.querySelector('button');
+        const status = card.querySelector('.status');
 
-        // Só o ativo recebe o campo
-        if (active && !opened){
-          const row = document.createElement('div');
-          row.className = 'row';
-          row.innerHTML = `
-            <input type="text" placeholder="Senha do ${idx+1}º" aria-label="Senha do ${lock.titulo}">
-            <button>Abrir</button>
-          `;
-          node.appendChild(row);
-
-          const input = row.querySelector('input');
-          const btn   = row.querySelector('button');
-
-          function tryOpen(){
-            const v = normalize(input.value);
-            if(!v){ status.innerHTML = '<span class="err">Digite a senha.</span>'; return; }
-            if(v === normalize(lock.senha)){
-              state.opened[lock.id] = true; save();
-              status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
-              node.querySelector('.icon').textContent = '🔓';
-              setTimeout(render, 180); // libera o próximo, mantendo posições
-            } else {
-              status.innerHTML = '<span class="err">Senha incorreta.</span>';
-            }
+        function tryOpen(){
+          if(!active || opened) return;
+          const val = normalize(input.value);
+          if(!val){ status.innerHTML = '<span class="err">Digite a senha.</span>'; return; }
+          if(val === normalize(lock.senha)){
+            state.opened[lock.id] = true; save();
+            status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
+            // troca ícone para aberto e desabilita controles
+            card.querySelector('.lock').innerHTML = prettyLockSVG('open');
+            input.disabled = true; btn.disabled = true;
+            // re-render geral para liberar o próximo (mas mantém posições)
+            setTimeout(render, 220);
+          } else {
+            status.innerHTML = '<span class="err">Senha incorreta.</span>';
           }
-
-          btn.addEventListener('click', tryOpen);
-          input.addEventListener('keydown', e => { if(e.key === 'Enter') tryOpen(); });
-          setTimeout(()=>input.focus(), 0);
         }
 
-        stage.appendChild(node);
+        btn?.addEventListener('click', tryOpen);
+        input?.addEventListener('keydown', e => { if(e.key === 'Enter') tryOpen(); });
+
+        stage.appendChild(card);
+
+        // foco automático no ativo
+        if(active && input) setTimeout(()=>input.focus(), 0);
       });
     }
-
-    // Segurança: se algo deu ruim e nada renderizou (ex.: altura zero),
-    // força um re-render após o carregamento completo.
-    window.addEventListener('load', render);
 
     render();
   </script>
