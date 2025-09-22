@@ -11,28 +11,38 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif; color:var(--text); background:#0b1d1a; overflow:hidden }
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
+      color:var(--text); background:#0b1d1a; overflow:hidden
+    }
 
     /* Fundo */
     .bg{ position:fixed; inset:0; z-index:-2; background:#000 url('assets/bg.jpg') center/cover no-repeat fixed; filter:saturate(1.05) contrast(1.05) }
     .bg::after{ content:""; position:absolute; inset:0; background:var(--bg-overlay) }
 
-    /* Layout */
-    .wrap{ height:100%; display:grid; grid-template-rows:auto 1fr auto }
+    /* Layout base */
+    .wrap{ height:100dvh; display:grid; grid-template-rows:auto 1fr auto }
+
     header{ padding:18px 22px; display:flex; align-items:center; gap:12px }
     header .badge{ background:rgba(0,0,0,.45); padding:6px 10px; border-radius:999px; font-size:.85rem; color:var(--muted) }
     header h1{ margin:0; font-size:1.25rem; text-shadow:0 3px 12px rgba(0,0,0,.5) }
 
-    /* Palco: ícones espalhados, pequenos */
-    .stage{ position:relative; height:calc(100vh - 140px); overflow:hidden; }
+    /* Palco: todos os cadeados visíveis, pequenos, “parte do cenário” */
+    .stage{
+      position:relative;
+      min-height:60dvh;           /* garante altura útil */
+      height:100%;                /* ocupa o 1fr da grid */
+      overflow:hidden;
+    }
     .lock-node{
       position:absolute; transform: translate(-50%, -50%);
       display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
       padding:6px; background:transparent; border:none; box-shadow:none;
+      animation: pop 220ms ease-out;
     }
+    @keyframes pop{ from{ transform:translate(-50%,-55%) scale(.95); opacity:0 } to{ transform:translate(-50%,-50%) scale(1); opacity:1 } }
 
-    /* Ícone pequeno (emoji) parecendo parte do cenário */
-    .icon{ font-size:34px; line-height:1; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+    .icon{ font-size:32px; line-height:1; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
     .title{ font-size:.9rem; color:var(--muted); text-shadow:0 0 6px rgba(0,0,0,.8) }
 
     /* Campo aparece só no ativo */
@@ -104,7 +114,7 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    const LS_KEY = 'cadeados-emoji-spread-v1';
+    const LS_KEY = 'cadeados-emoji-spread-v2';
     let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"opened":{},"pos":{}}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
 
@@ -117,18 +127,18 @@
     document.getElementById('btnReset').onclick = () => { state={opened:{}, pos:{}}; save(); render(); };
     document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
 
-    // Gera posições "semi-fixas" e guarda no localStorage
+    // Posições “semi-fixas” salvas (para manter visual ao recarregar)
     function getPositionFor(id){
       if(state.pos[id]) return state.pos[id];
       const min = 12, max = 88; // evita bordas/cabeçalho/rodapé
-      const triesMax = 50;
+      const triesMax = 60;
       let x, y, tries = 0;
 
       function farEnough(px,py){
         for(const k in state.pos){
           const [ox,oy] = state.pos[k];
           const dx = px-ox, dy = py-oy;
-          const d = Math.sqrt(dx*dx + dy*dy);
+          const d = Math.hypot(dx,dy);
           if(d < 14) return false; // separação mínima
         }
         return true;
@@ -199,10 +209,8 @@
             if(v === normalize(lock.senha)){
               state.opened[lock.id] = true; save();
               status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
-              // troca emoji para aberto
               node.querySelector('.icon').textContent = '🔓';
-              // re-render libera o próximo (mantém posições)
-              setTimeout(render, 200);
+              setTimeout(render, 180); // libera o próximo, mantendo posições
             } else {
               status.innerHTML = '<span class="err">Senha incorreta.</span>';
             }
@@ -216,6 +224,10 @@
         stage.appendChild(node);
       });
     }
+
+    // Segurança: se algo deu ruim e nada renderizou (ex.: altura zero),
+    // força um re-render após o carregamento completo.
+    window.addEventListener('load', render);
 
     render();
   </script>
