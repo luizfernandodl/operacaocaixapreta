@@ -23,11 +23,8 @@
 
     /* Layout base: 4 linhas (header, thumbs, stage, footer) */
     .wrap{
-      height:100dvh;
-      height:100vh;              /* fallback */
-      display:grid;
-      grid-template-rows:auto auto 1fr auto;  /* <<< CORRIGIDO */
-      min-height:100dvh;
+      height:100dvh; height:100vh;
+      display:grid; grid-template-rows:auto auto 1fr auto; min-height:100dvh;
     }
 
     header{ padding:12px 18px; display:flex; align-items:center; gap:10px }
@@ -65,11 +62,7 @@
     }
 
     /* Palco central: cadeado atual grandão */
-    .stage{
-      display:grid; place-items:center;
-      min-height:58dvh;           /* garante altura visível */
-      padding:12px; overflow:auto
-    }
+    .stage{ display:grid; place-items:center; min-height:58dvh; padding:12px; overflow:auto }
     .card{
       background:transparent; border:none; box-shadow:none;
       display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; padding:16px;
@@ -97,16 +90,22 @@
     .dot.on{ background:var(--accent) }
     .reset{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,.18) }
 
-    /* Dica no canto inferior esquerdo (não cobre o Reiniciar) */
+    /* Dica — canto inferior esquerdo (não cobre o Reiniciar) */
     .help{ position:fixed; left:14px; bottom:14px; background:rgba(0,0,0,.6); color:var(--muted); padding:8px 12px; border-radius:12px; font-size:.85rem }
     @media (max-width:640px){ .help{ left:12px; bottom:12px } }
 
-    /* Modal final */
-    .modal{ position:fixed; inset:0; display:none; place-items:center; backdrop-filter:blur(4px) }
-    .modal.show{ display:grid }
-    .modal .box{ background:#061914cc; color:var(--text); padding:28px; border-radius:16px; text-align:center; max-width:90% }
+    /* Dock (parte inferior) para cadeados ABERTOS */
+    .dock{
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:64px; display:flex; gap:14px; padding:6px 10px;
+      background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.12); border-radius:12px;
+      box-shadow:0 8px 18px rgba(0,0,0,.25);
+      z-index:4;
+    }
+    .dock .slot{ width:42px; height:52px; display:grid; place-items:center }
+    .dock svg{ width:32px; height:40px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.28)); }
 
-    /* Fantasma para animação de “voo” ao topo */
+    /* Fantasma para animação de “voo” ao rodapé */
     .fly-ghost{
       position:fixed; left:0; top:0; width:0; height:0; pointer-events:none; z-index:5;
       filter: drop-shadow(0 8px 22px rgba(0,0,0,.35));
@@ -136,6 +135,9 @@
   <!-- Dica -->
   <div class="help">Dica: as senhas não diferenciam maiúsculas/minúsculas.</div>
 
+  <!-- Dock inferior (cadeados abertos) -->
+  <div class="dock" id="dock" aria-label="Cadeados abertos"></div>
+
   <!-- Modal final -->
   <div class="modal" id="congrats">
     <div class="box">
@@ -145,7 +147,7 @@
   </div>
 
   <script>
-    // Etapas e senhas (com o 6º = 4310)
+    // Etapas e senhas (6 cadeados, último 4310)
     const LOCKS = [
       { id: 1, titulo: 'Cadeado 1', senha: 'GOLPE'   },
       { id: 2, titulo: 'Cadeado 2', senha: 'CEMCC'   },
@@ -155,7 +157,7 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    const LS_KEY = 'cadeados-topbar-v3';
+    const LS_KEY = 'cadeados-dock-v1';
     let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"idx":0}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
     const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
@@ -164,32 +166,45 @@
     const stage  = document.getElementById('stage');
     const progress = document.getElementById('progress');
     const modal = document.getElementById('congrats');
+    const dock = document.getElementById('dock');
 
     document.getElementById('btnReset').onclick = () => { state={idx:0}; save(); render(); };
     document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
 
-    /* SVG do cadeado (pequeno e grande — ajustamos via CSS) */
+    /* SVG — fechado agora BEM fechado; aberto com haste solta à direita */
     function lockSVG({open=false}={}){
       const gradTop = open ? '#bff5d7' : '#cfeee1';
       const gradBot = open ? '#31c788' : '#35b986';
+      const ringGrad = `
+        <linearGradient id="ringGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dfeee8"/>
+        </linearGradient>`;
+      const bodyGrad = `
+        <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${gradTop}"/><stop offset="100%" stop-color="${gradBot}"/>
+        </linearGradient>`;
       return `
       <svg viewBox="0 0 64 80" role="img" aria-label="Cadeado" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${gradTop}"/>
-            <stop offset="100%" stop-color="${gradBot}"/>
-          </linearGradient>
-          <linearGradient id="ringGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#ffffff"/>
-            <stop offset="100%" stop-color="#dfeee8"/>
-          </linearGradient>
-        </defs>
+        <defs>${ringGrad}${bodyGrad}</defs>
         ${open
-          ? `<path d="M48 30 v-8 a16 16 0 0 0-32 0" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
-          : `<path d="M42 22 v-4 a16 16 0 0 0-32 0 v12" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`}
+          // ABERTO: haste “solta” (sem descer no lado direito)
+          ? `<path d="M16 26 v-8 a16 16 0 0 1 32 0" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
+          // FECHADO: haste descendo dos dois lados e encostando no corpo
+          : `<path d="M16 28 v-8 a16 16 0 0 1 32 0 v8" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
+        }
         <rect x="8" y="28" width="48" height="42" rx="10" fill="url(#bodyGrad)" stroke="#0b3b2d" stroke-width="2" />
         <circle cx="32" cy="46" r="4" fill="#0b3b2d"/>
       </svg>`;
+    }
+
+    function ensureDockSlots(n){
+      dock.innerHTML = '';
+      for(let i=0;i<n;i++){
+        const s = document.createElement('div');
+        s.className = 'slot';
+        s.id = 'dock-slot-' + i;
+        dock.appendChild(s);
+      }
     }
 
     function renderTopbar(openedCount){
@@ -213,7 +228,7 @@
       stage.innerHTML = '';
       progress.innerHTML = '';
 
-      // bolinhas de progresso
+      // progresso (bolinhas)
       LOCKS.forEach((_, i) => {
         const d = document.createElement('div');
         d.className = 'dot' + (i < state.idx ? ' on' : '');
@@ -242,10 +257,11 @@
       const btn = card.querySelector('#btnOpen');
       const status = card.querySelector('#status');
 
-      function animateFlyToTop(){
+      function animateFlyToDock(){
         const big = document.getElementById('bigLock')?.querySelector('svg');
-        const dest = document.getElementById('thumb-' + state.idx)?.querySelector('svg');
-        if(!big || !dest){ state.idx += 1; save(); render(); return; } // fallback seguro
+        const destSlotId = 'dock-slot-' + state.idx;
+        const dest = document.getElementById(destSlotId);
+        if(!big || !dest){ state.idx += 1; save(); render(); return; }
 
         const br = big.getBoundingClientRect();
         const dr = dest.getBoundingClientRect();
@@ -268,16 +284,9 @@
         ghost.animate([
           { transform:`translate(${br.left}px, ${br.top}px) scale(1)`, opacity:1 },
           { transform:`translate(${br.left+dx}px, ${br.top+dy}px) scale(${scaleX}, ${scaleY})`, opacity:1 }
-        ], { duration: 320, easing:'ease-in-out' }).onfinish = () => {
+        ], { duration: 360, easing:'ease-in-out' }).onfinish = () => {
           ghost.remove();
-          // marca miniatura como aberta
-          const slot = document.getElementById('thumb-' + state.idx);
-          if (slot){
-            slot.innerHTML = lockSVG({open:true});
-            const badge = document.createElement('div');
-            badge.className = 'num'; badge.textContent = (state.idx+1);
-            slot.appendChild(badge);
-          }
+          dest.innerHTML = lockSVG({open:true});
           state.idx += 1; save();
           render();
         };
@@ -289,7 +298,7 @@
         if (val === normalize(current.senha)) {
           status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
           document.getElementById('bigLock').innerHTML = lockSVG({open:true});
-          animateFlyToTop();
+          animateFlyToDock();
         } else {
           status.innerHTML = '<span class="err">Senha incorreta.</span>';
         }
@@ -301,7 +310,16 @@
     }
 
     function render(){
+      // cria “slots” na dock (um por cadeado)
+      ensureDockSlots(LOCKS.length);
+
       const openedCount = state.idx;
+      // pré-preenche dock com os já abertos (ex.: ao recarregar)
+      for(let i=0;i<openedCount;i++){
+        const s = document.getElementById('dock-slot-'+i);
+        if(s && !s.innerHTML) s.innerHTML = lockSVG({open:true});
+      }
+
       renderTopbar(openedCount);
       renderStage();
     }
