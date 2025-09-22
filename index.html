@@ -11,10 +11,7 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
-      color:var(--text); background:#0b1d1a; overflow:hidden
-    }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif; color:var(--text); background:#0b1d1a; overflow:hidden }
 
     /* Fundo */
     .bg{ position:fixed; inset:0; z-index:-2; background:#000 url('assets/bg.jpg') center/cover no-repeat fixed; filter:saturate(1.05) contrast(1.05) }
@@ -26,27 +23,30 @@
     header .badge{ background:rgba(0,0,0,.45); padding:6px 10px; border-radius:999px; font-size:.85rem; color:var(--muted) }
     header h1{ margin:0; font-size:1.25rem; text-shadow:0 3px 12px rgba(0,0,0,.5) }
 
-    /* Palco para posicionar o cadeado em locais aleatórios */
-    .stage{ position:relative; overflow:hidden; }
-    .floating{
+    /* Palco: todos os cadeados espalhados */
+    .stage{ position:relative; height:calc(100vh - 140px); overflow:hidden; }
+    .lock-card{
       position:absolute; transform: translate(-50%, -50%);
-      display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; padding:12px;
-      animation: pop 220ms ease-out
+      display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;
+      padding:10px; background:transparent; border:none; box-shadow:none; 
+      animation: pop 220ms ease-out;
     }
-    @keyframes pop{ from{ transform:translate(-50%,-60%) scale(.9); opacity:.0 } to{ transform:translate(-50%,-50%) scale(1); opacity:1 } }
+    @keyframes pop{ from{ transform:translate(-50%,-55%) scale(.95); opacity:0 } to{ transform:translate(-50%,-50%) scale(1); opacity:1 } }
 
     .title, .muted, .status { text-shadow:0 0 6px rgba(0,0,0,.8) }
     .title{ font-weight:600 }
 
-    .row{ display:flex; gap:10px; align-items:center; width:min(520px,90vw) }
+    .row{ display:flex; gap:8px; align-items:center; width:min(420px,90vw) }
     input[type="text"]{
-      flex:1; padding:12px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.25);
+      flex:1; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.25);
       background:rgba(0,0,0,.35); color:var(--text); font-size:1rem; outline:none
     }
+    input[disabled]{ opacity:.6; cursor:not-allowed }
     button{
-      padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.15);
+      padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.15);
       background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#062315; font-weight:700; cursor:pointer
     }
+    button[disabled]{ opacity:.6; cursor:not-allowed }
     .status{ min-height:22px; font-size:.95rem }
     .ok{ color:var(--ok) } .err{ color:var(--err) }
 
@@ -64,7 +64,7 @@
     .modal.show{ display:grid }
     .modal .box{ background:#061914cc; color:var(--text); padding:28px; border-radius:16px; text-align:center; max-width:90% }
 
-    /* Melhorias do SVG (sombra) */
+    /* Lock SVG beleza extra */
     .lock svg{ filter: drop-shadow(0 6px 18px rgba(0,0,0,.35)); }
   </style>
 </head>
@@ -76,8 +76,8 @@
       <h1>Operação Caixa Preta</h1>
     </header>
 
-    <!-- palco para um cadeado por vez em posições aleatórias -->
-    <main class="stage" id="stage" style="height: calc(100vh - 140px);"></main>
+    <!-- todos os cadeados visíveis e espalhados -->
+    <main class="stage" id="stage"></main>
 
     <footer>
       <div class="progress" id="progress" aria-label="Progresso"></div>
@@ -85,7 +85,7 @@
     </footer>
   </div>
 
-  <div class="help">Dica: as senhas não diferenciam maiúsculas/minúsculas.</div>
+  <div class="help">Dica: as senhas seguem a ordem dos cadeados, um por vez.</div>
 
   <!-- Modal final -->
   <div class="modal" id="congrats">
@@ -96,7 +96,7 @@
   </div>
 
   <script>
-    // Etapas e senhas (com o sexto cadeado 4310)
+    // Etapas e senhas (6 cadeados, último 4310)
     const LOCKS = [
       { id: 1, titulo: 'Cadeado 1', senha: 'GOLPE'   },
       { id: 2, titulo: 'Cadeado 2', senha: 'CEMCC'   },
@@ -106,130 +106,149 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    // Estado
-    const LS_KEY = 'cadeados-random-v1';
-    let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"idx":0,"pos":[50,50]}');
+    const LS_KEY = 'cadeados-spread-v1';
+    let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"opened":{},"pos":{}}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
 
     const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
 
-    // DOM
     const stage = document.getElementById('stage');
     const progress = document.getElementById('progress');
     const modal = document.getElementById('congrats');
-    document.getElementById('btnReset').onclick = () => { state={idx:0, pos:[50,50]}; save(); render(); };
+
+    document.getElementById('btnReset').onclick = () => { state={opened:{}, pos:{}}; save(); render(); };
     document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
 
-    // Cadeado mais bonito (gradiente + canto arredondado)
-    function prettyLockSVG(open=false){
+    // Cadeado estiloso (gradiente + arco)
+    function prettyLockSVG(style='closed'){
+      const open = style === 'open';
+      const active = style === 'active';
+      // cores reativas
+      const gradTop = active ? '#d6ffe9' : open ? '#bff5d7' : '#c8f1e0';
+      const gradBot = active ? '#39d995' : open ? '#31c788' : '#34b184';
+      const ringTop = '#ffffff', ringBot = '#dff1ea';
+      const strokeBody = active ? '#0e4a36' : '#0b3b2d';
+
       return `
-      <svg viewBox="0 0 64 80" width="140" height="175" role="img" aria-label="Cadeado" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 64 80" width="150" height="180" role="img" aria-label="Cadeado" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#b7f7d7"/>
-            <stop offset="100%" stop-color="#34c78a"/>
+            <stop offset="0%" stop-color="${gradTop}"/>
+            <stop offset="100%" stop-color="${gradBot}"/>
           </linearGradient>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#ffffff"/>
-            <stop offset="100%" stop-color="#cfe9dd"/>
+            <stop offset="0%" stop-color="${ringTop}"/>
+            <stop offset="100%" stop-color="${ringBot}"/>
           </linearGradient>
         </defs>
-        <!-- arco (aberto/fechado) -->
         ${open
-          ? `<path d="M46 28 v-6 a14 14 0 0 0-28 0" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
-          : `<path d="M40 22 v-4 a14 14 0 0 0-28 0 v10" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`}
-        <!-- corpo -->
-        <rect x="8" y="26" width="48" height="40" rx="8" fill="url(#bodyGrad)" stroke="#0b3b2d" stroke-width="2" />
-        <!-- miolo -->
-        <circle cx="32" cy="44" r="4" fill="#0b3b2d"/>
+          ? `<path d="M48 30 v-8 a16 16 0 0 0-32 0" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
+          : `<path d="M42 22 v-4 a16 16 0 0 0-32 0 v12" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`}
+        <rect x="8" y="28" width="48" height="42" rx="10" fill="url(#bodyGrad)" stroke="${strokeBody}" stroke-width="2" />
+        <circle cx="32" cy="46" r="4" fill="${strokeBody}"/>
       </svg>`;
     }
 
-    // Posição aleatória (em % da área visível), evitando ficar muito perto das bordas/rodapé/cabeçalho
-    function randomPos(prev=[50,50]){
-      // janelas seguras: 15% a 85% nas duas direções
-      const min = 15, max = 85;
+    // Gera posições "semi-fixas" (espalhadas) e guarda no localStorage
+    function getPositionFor(id){
+      if(state.pos[id]) return state.pos[id];
+      // pontos “seguros” (evita bordas/cabeçalho/rodapé)
+      const min = 12, max = 88;
+      const triesMax = 40;
       let x, y, tries = 0;
-      do {
+
+      function isFarFromOthers(px,py){
+        for(const k in state.pos){
+          const [ox,oy] = state.pos[k];
+          const dx = px-ox, dy = py-oy;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if(d < 18) return false; // distancia mínima em porcentagem (tela)
+        }
+        return true;
+      }
+
+      do{
         x = Math.floor(min + Math.random()*(max-min));
         y = Math.floor(min + Math.random()*(max-min));
         tries++;
-        // distância mínima de 18% do anterior, pra não cair quase no mesmo lugar
-      } while (distance([x,y], prev) < 18 && tries < 20);
-      return [x,y];
-    }
-    function distance([x1,y1],[x2,y2]){
-      const dx = x1-x2, dy = y1-y2;
-      return Math.sqrt(dx*dx + dy*dy);
+      } while(!isFarFromOthers(x,y) && tries<triesMax);
+
+      state.pos[id] = [x,y];
+      save();
+      return state.pos[id];
     }
 
     function render(){
       stage.innerHTML = '';
       progress.innerHTML = '';
 
-      // progresso (6 bolinhas)
+      // índice do próximo a abrir
+      const openedCount = LOCKS.filter(l => state.opened[l.id]).length;
+
+      // progresso
       LOCKS.forEach((_, i) => {
         const d = document.createElement('div');
-        d.className = 'dot' + (i < state.idx ? ' on' : '');
+        d.className = 'dot' + (i < openedCount ? ' on' : '');
         progress.appendChild(d);
       });
 
       // terminou?
-      if (state.idx >= LOCKS.length) { modal.classList.add('show'); return; }
+      if (openedCount >= LOCKS.length) { modal.classList.add('show'); return; }
 
-      const current = LOCKS[state.idx];
+      // cria todos os cadeados espalhados
+      LOCKS.forEach((lock, idx) => {
+        const opened = !!state.opened[lock.id];
+        const active = idx === openedCount; // apenas o próximo fica liberado
 
-      // container flutuante num ponto aleatório
-      const [px, py] = state.pos || [50,50];
-      const holder = document.createElement('div');
-      holder.className = 'floating';
-      holder.style.left = px + '%';
-      holder.style.top  = py + '%';
+        const [px, py] = getPositionFor(lock.id);
+        const card = document.createElement('section');
+        card.className = 'lock-card';
+        card.style.left = px + '%';
+        card.style.top  = py + '%';
 
-      holder.innerHTML = `
-        <div class="lock">${prettyLockSVG(false)}</div>
-        <div class="title">${current.titulo}</div>
-        <div class="muted" aria-live="polite">Ativo: digite a senha para abrir.</div>
-        <div class="row">
-          <input id="pass" type="text" autocomplete="off" placeholder="Senha do ${state.idx+1}º" aria-label="Senha do cadeado atual">
-          <button id="btnOpen">Abrir</button>
-        </div>
-        <div class="status" id="status"></div>
-      `;
+        // estilo do ícone conforme estado
+        const iconStyle = opened ? 'open' : (active ? 'active' : 'closed');
 
-      const input  = holder.querySelector('#pass');
-      const btn    = holder.querySelector('#btnOpen');
-      const status = holder.querySelector('#status');
+        card.innerHTML = `
+          <div class="lock">${prettyLockSVG(iconStyle)}</div>
+          <div class="title">${lock.titulo}</div>
+          <div class="muted" aria-live="polite">${opened ? 'Aberto!' : (active ? 'Ativo: digite a senha' : 'Bloqueado até abrir o anterior')}</div>
+          <div class="row">
+            <input ${opened || !active ? 'disabled' : ''} type="text" autocomplete="off" placeholder="Senha do ${idx+1}º" aria-label="Senha do ${lock.titulo}">
+            <button ${opened || !active ? 'disabled' : ''}>Abrir</button>
+          </div>
+          <div class="status"></div>
+        `;
 
-      function advance(){
-        // anima um "sumir" rápido
-        holder.animate([{opacity:1, transform:'translate(-50%,-50%) scale(1)'},{opacity:0, transform:'translate(-50%,-52%) scale(.98)'}], {duration:180, easing:'ease-out'});
-        // define nova posição pro próximo cadeado
-        const nextPos = randomPos(state.pos);
-        state.idx += 1;
-        state.pos = nextPos;
-        save();
-        setTimeout(render, 180);
-      }
+        const input = card.querySelector('input');
+        const btn = card.querySelector('button');
+        const status = card.querySelector('.status');
 
-      function tryOpen(){
-        const v = normalize(input.value);
-        if(!v){ status.innerHTML = '<span class="err">Digite a senha.</span>'; return; }
-        if(v === normalize(current.senha)){
-          status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
-          // troca o SVG para o aberto, só pra feedback
-          holder.querySelector('.lock').innerHTML = prettyLockSVG(true);
-          setTimeout(advance, 220);
-        } else {
-          status.innerHTML = '<span class="err">Senha incorreta.</span>';
+        function tryOpen(){
+          if(!active || opened) return;
+          const val = normalize(input.value);
+          if(!val){ status.innerHTML = '<span class="err">Digite a senha.</span>'; return; }
+          if(val === normalize(lock.senha)){
+            state.opened[lock.id] = true; save();
+            status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
+            // troca ícone para aberto e desabilita controles
+            card.querySelector('.lock').innerHTML = prettyLockSVG('open');
+            input.disabled = true; btn.disabled = true;
+            // re-render geral para liberar o próximo (mas mantém posições)
+            setTimeout(render, 220);
+          } else {
+            status.innerHTML = '<span class="err">Senha incorreta.</span>';
+          }
         }
-      }
 
-      btn.addEventListener('click', tryOpen);
-      input.addEventListener('keydown', e => { if (e.key === 'Enter') tryOpen(); });
+        btn?.addEventListener('click', tryOpen);
+        input?.addEventListener('keydown', e => { if(e.key === 'Enter') tryOpen(); });
 
-      stage.appendChild(holder);
-      input.focus();
+        stage.appendChild(card);
+
+        // foco automático no ativo
+        if(active && input) setTimeout(()=>input.focus(), 0);
+      });
     }
 
     render();
