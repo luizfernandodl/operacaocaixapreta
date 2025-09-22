@@ -8,6 +8,7 @@
     :root{
       --accent:#21d07a; --accent-2:#00a86b; --bg-overlay: rgba(0,0,0,.55);
       --text:#e7f6ef; --muted:#a9c7b9; --ok:#5be37b; --err:#ff6b6b;
+      --thumb-ring: rgba(255,255,255,.18);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -27,21 +28,36 @@
     header .badge{ background:rgba(0,0,0,.45); padding:6px 10px; border-radius:999px; font-size:.85rem; color:var(--muted) }
     header h1{ margin:0; font-size:1.05rem; text-shadow:0 3px 12px rgba(0,0,0,.5) }
 
-    /* Faixa superior: miniaturas dos 6 cadeados */
+    /* Faixa superior: miniaturas numeradas */
     .thumbs{
       position:relative;
       display:flex; justify-content:center; gap:18px; padding:10px 14px 0;
       flex-wrap:wrap;
     }
     .thumb{
+      position:relative;
       width:56px; height:66px;
       display:grid; place-items:center; border-radius:12px;
       background:transparent; border:1px dashed transparent;
       transition:transform .15s ease, border-color .15s ease, background-color .15s ease;
       filter: drop-shadow(0 4px 10px rgba(0,0,0,.28));
     }
-    .thumb.active{ transform:scale(1.08); border-color:rgba(255,255,255,.18); background:rgba(0,0,0,.15); }
+    .thumb.active{ transform:scale(1.08); border-color:var(--thumb-ring); background:rgba(0,0,0,.15); }
     .thumb svg{ width:42px; height:52px; }
+    .thumb.active svg{ animation:pulse 1s ease-in-out infinite; }
+    @keyframes pulse{
+      0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(114,241,179,.0)); }
+      50%{ transform:scale(1.06); filter:drop-shadow(0 0 14px rgba(114,241,179,.5)); }
+    }
+    /* Selo numérico */
+    .num{
+      position:absolute; top:-6px; right:-6px;
+      min-width:18px; height:18px; padding:0 4px;
+      display:grid; place-items:center;
+      border-radius:999px; background:linear-gradient(180deg,var(--accent),var(--accent-2));
+      color:#062315; font-weight:800; font-size:.7rem; border:1px solid rgba(0,0,0,.25);
+      box-shadow:0 2px 6px rgba(0,0,0,.25);
+    }
 
     /* Palco central: cadeado atual grandão */
     .stage{ display:grid; place-items:center; min-height:58dvh; padding:12px; overflow:auto }
@@ -72,7 +88,7 @@
     .dot.on{ background:var(--accent) }
     .reset{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,.18) }
 
-    /* Dica reposicionada: canto inferior esquerdo (não cobre o Reiniciar) */
+    /* Dica no canto inferior esquerdo (não cobre o Reiniciar) */
     .help{ position:fixed; left:14px; bottom:14px; background:rgba(0,0,0,.6); color:var(--muted); padding:8px 12px; border-radius:12px; font-size:.85rem }
     @media (max-width:640px){ .help{ left:12px; bottom:12px } }
 
@@ -108,7 +124,7 @@
     </footer>
   </div>
 
-  <!-- Dica restaurada e movida -->
+  <!-- Dica -->
   <div class="help">Dica: as senhas não diferenciam maiúsculas/minúsculas.</div>
 
   <!-- Modal final -->
@@ -120,7 +136,7 @@
   </div>
 
   <script>
-    // Etapas e senhas (inclui o 6º: 4310)
+    // Etapas e senhas (com o 6º = 4310)
     const LOCKS = [
       { id: 1, titulo: 'Cadeado 1', senha: 'GOLPE'   },
       { id: 2, titulo: 'Cadeado 2', senha: 'CEMCC'   },
@@ -130,7 +146,7 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    const LS_KEY = 'cadeados-topbar-v1';
+    const LS_KEY = 'cadeados-topbar-v2';
     let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"idx":0}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
     const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\\p{Diacritic}/gu,'');
@@ -176,6 +192,10 @@
         t.className = 'thumb' + (active ? ' active' : '');
         t.id = 'thumb-' + i;
         t.innerHTML = lockSVG({open: opened});
+        const badge = document.createElement('div');
+        badge.className = 'num';
+        badge.textContent = (i+1);
+        t.appendChild(badge);
         thumbs.appendChild(t);
       });
     }
@@ -214,7 +234,6 @@
       const status = card.querySelector('#status');
 
       function animateFlyToTop(){
-        // Elementos origem (cadeado grande) e destino (thumb atual)
         const big = document.getElementById('bigLock').querySelector('svg');
         const dest = document.getElementById('thumb-' + state.idx).querySelector('svg');
         if(!big || !dest) return;
@@ -222,14 +241,12 @@
         const br = big.getBoundingClientRect();
         const dr = dest.getBoundingClientRect();
 
-        // Cria um fantasma no topo da página e anima translate/scale
         const ghost = document.createElement('div');
         ghost.className = 'fly-ghost';
-        ghost.innerHTML = lockSVG({open:true}); // já anima como aberto
+        ghost.innerHTML = lockSVG({open:true});
         document.body.appendChild(ghost);
 
         const gsvg = ghost.querySelector('svg');
-        // Posiciona o fantasma na posição do cadeado grande
         ghost.style.transform = `translate(${br.left}px, ${br.top}px)`;
         gsvg.style.width = br.width + 'px';
         gsvg.style.height = br.height + 'px';
@@ -244,12 +261,10 @@
           { transform:`translate(${br.left+dx}px, ${br.top+dy}px) scale(${scaleX}, ${scaleY})`, opacity:1 }
         ], { duration: 320, easing:'ease-in-out' }).onfinish = () => {
           ghost.remove();
-          // atualiza a miniatura para aberta
           const slot = document.getElementById('thumb-' + state.idx);
-          if (slot) slot.innerHTML = lockSVG({open:true});
-          // avança etapa
+          if (slot) slot.innerHTML = lockSVG({open:true}) + `<div class="num">${state.idx+1}</div>`;
           state.idx += 1; save();
-          render(); // re-render geral (topo + centro)
+          render();
         };
       }
 
@@ -258,7 +273,6 @@
         if (!val) { status.innerHTML = '<span class="err">Digite a senha.</span>'; return; }
         if (val === normalize(current.senha)) {
           status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
-          // feedback: troca visual do grande para aberto e anima “voo” ao topo
           document.getElementById('bigLock').innerHTML = lockSVG({open:true});
           animateFlyToTop();
         } else {
