@@ -9,42 +9,29 @@
       --accent:#21d07a; --accent-2:#00a86b; --bg-overlay: rgba(0,0,0,.55);
       --text:#e7f6ef; --muted:#a9c7b9; --ok:#5be37b; --err:#ff6b6b;
       --thumb-ring: rgba(255,255,255,.18);
-
-      /* alturas fixas (ajuste fino se quiser) */
-      --header-h: 56px;
-      --thumbs-h: 78px;
-      --footer-h: 64px;
-      --help-gap: 56px; /* distância vertical da dock para a dica/botão */
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
-      color:var(--text); background:#0b1d1a; overflow:auto;
+      color:var(--text); background:#0b1d1a;
     }
 
     /* Fundo */
     .bg{ position:fixed; inset:0; z-index:-2; background:#000 url('assets/bg.jpg') center/cover no-repeat fixed; filter:saturate(1.05) contrast(1.05) }
     .bg::after{ content:""; position:absolute; inset:0; background:var(--bg-overlay) }
 
-    /* Header FIXO */
-    header{
-      position:fixed; left:0; right:0; top:0; height:var(--header-h);
-      display:flex; align-items:center; gap:10px; padding:0 18px;
-      z-index:6;
-    }
+    /* Cabeçalho (no fluxo) */
+    header{ padding:16px 18px; display:flex; align-items:center; gap:10px }
     header .badge{ background:rgba(0,0,0,.45); padding:6px 10px; border-radius:999px; font-size:.85rem; color:var(--muted) }
-    header h1{ margin:0; font-size:1.05rem; text-shadow:0 3px 12px rgba(0,0,0,.5) }
+    header h1{ margin:0; font-size:1.1rem; text-shadow:0 3px 12px rgba(0,0,0,.5) }
 
-    /* Thumbs FIXAS logo abaixo do cabeçalho (só próximos) */
+    /* Miniaturas (só próximos) — no fluxo, somem ao rolar pra baixo */
     .thumbs{
-      position:fixed; left:0; right:0; top:var(--header-h);
-      height:var(--thumbs-h);
-      display:flex; justify-content:center; gap:18px; padding:10px 14px 0;
-      flex-wrap:wrap; z-index:5; pointer-events:none; /* decorativo */
+      display:flex; justify-content:center; gap:18px; padding:8px 14px 0;
+      flex-wrap:wrap;
     }
     .thumb{
-      pointer-events:auto;
       position:relative;
       width:56px; height:66px;
       display:grid; place-items:center; border-radius:12px;
@@ -52,13 +39,8 @@
       transition:transform .15s ease, border-color .15s ease, background-color .15s ease;
       filter: drop-shadow(0 4px 10px rgba(0,0,0,.28));
     }
-    .thumb.active{ transform:scale(1.08); border-color:var(--thumb-ring); background:rgba(0,0,0,.15); }
     .thumb svg{ width:42px; height:52px; }
-    .thumb.active svg{ animation:pulse 1s ease-in-out infinite; }
-    @keyframes pulse{
-      0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(114,241,179,.0)); }
-      50%{ transform:scale(1.06); filter:drop-shadow(0 0 14px rgba(114,241,179,.5)); }
-    }
+    .thumb.active{ transform:scale(1.08); border-color:var(--thumb-ring); background:rgba(0,0,0,.15); }
     .num{
       position:absolute; top:-6px; right:-6px;
       min-width:18px; height:18px; padding:0 4px;
@@ -68,15 +50,8 @@
       box-shadow:0 2px 6px rgba(0,0,0,.25);
     }
 
-    /* Espaço do conteúdo (compensa header + thumbs + dock + rodapé) */
-    .wrap{
-      min-height:100svh;
-      padding-top:calc(var(--header-h) + var(--thumbs-h));
-      padding-bottom:calc(var(--footer-h) + var(--help-gap) + 16px);
-    }
-
-    /* Palco central (cadeado atual) */
-    .stage{ display:grid; place-items:center; min-height:58dvh; padding:12px }
+    /* Palco central (cadeado atual) — no fluxo */
+    .stage{ display:grid; place-items:center; min-height:58dvh; padding:16px 12px }
     .card{
       background:transparent; border:none; box-shadow:none;
       display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; padding:16px;
@@ -84,7 +59,13 @@
     }
     @keyframes pop{ from{ transform:translateY(-6px); opacity:0 } to{ transform:translateY(0); opacity:1 } }
     .card h2, .card p, .status{ text-shadow:0 0 6px rgba(0,0,0,.8) }
-    .lock-illustration svg{ width:150px; height:185px; filter: drop-shadow(0 8px 22px rgba(0,0,0,.35)); }
+
+    /* Cadeado atual PULSANDO */
+    #bigLock svg{ width:150px; height:185px; filter: drop-shadow(0 8px 22px rgba(0,0,0,.35)); animation:pulse 1s ease-in-out infinite; }
+    @keyframes pulse{
+      0%,100%{ transform:scale(1); filter:drop-shadow(0 0 0 rgba(114,241,179,.0)); }
+      50%{ transform:scale(1.06); filter:drop-shadow(0 0 14px rgba(114,241,179,.5)); }
+    }
 
     .row{ display:flex; gap:10px; align-items:center; width:min(520px,90vw) }
     input[type="text"]{
@@ -96,72 +77,54 @@
       background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#062315; font-weight:700; cursor:pointer
     }
     .status{ min-height:22px; font-size:.95rem }
+    .ok{ color:var(--ok) } .err{ color:var(--err) }
 
-    /* Rodapé (sem bolinhas agora) */
-    footer{
-      position:fixed; left:0; right:0; bottom:0; height:var(--footer-h);
-      display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:0 22px;
-      z-index:2;
-    }
-    .reset{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,.18); padding:10px 14px; border-radius:12px }
-
-    /* Dica fixa no canto inferior esquerdo */
-    .help{
-      position:fixed; left:14px;
-      bottom:calc(env(safe-area-inset-bottom) + 14px);
-      background:rgba(0,0,0,.6); color:var(--muted);
-      padding:8px 12px; border-radius:12px; font-size:.85rem; z-index:2
-    }
-
-    /* Dock FIXA acima da dica/rodapé e abaixo do palco */
+    /* Dock de abertos — no fluxo, abaixo do palco (sai de vista ao rolar pra cima) */
     .dock{
-      position:fixed; left:50%; transform:translateX(-50%);
-      bottom:calc(var(--footer-h) + var(--help-gap) + env(safe-area-inset-bottom));
-      display:flex; gap:14px; padding:6px 10px;
-      background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.12); border-radius:12px;
-      box-shadow:0 8px 18px rgba(0,0,0,.25);
-      z-index:3;
+      display:flex; justify-content:center; gap:14px; padding:10px 10px; margin:8px 0 0;
+      background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.12); border-radius:12px;
+      box-shadow:0 8px 18px rgba(0,0,0,.15);
+      width:fit-content; margin-inline:auto;
     }
     .dock .slot{ width:42px; height:52px; display:grid; place-items:center }
     .dock svg{ width:32px; height:40px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.28)); }
+
+    /* Dica + Rodapé (ambos no fluxo, por último na página) */
+    .tips-footer{
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+      padding:16px 22px; margin-top:16px;
+    }
+    .help{ background:rgba(0,0,0,.6); color:var(--muted); padding:8px 12px; border-radius:12px; font-size:.9rem }
+    .reset{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,.18); padding:10px 14px; border-radius:12px }
 
     /* Modal final — escondido até terminar */
     .modal{ position:fixed; inset:0; display:none; place-items:center; backdrop-filter:blur(4px); z-index:10 }
     .modal.show{ display:grid }
     .modal .box{ background:#061914cc; color:var(--text); padding:28px; border-radius:16px; text-align:center; max-width:90% }
-
-    /* Feedback cores */
-    .ok{ color:#5be37b } .err{ color:#ff6b6b }
   </style>
 </head>
 <body>
   <div class="bg" aria-hidden="true"></div>
 
-  <!-- Header FIXO -->
   <header>
     <span class="badge">Jogo Sequencial</span>
     <h1>Operação Caixa Preta</h1>
   </header>
 
-  <!-- Thumbs FIXAS (só próximos cadeados) -->
+  <!-- Miniaturas no TOPO (somem ao rolar p/ baixo) -->
   <div class="thumbs" id="thumbs" aria-label="Próximos cadeados"></div>
 
-  <!-- Conteúdo com compensação de áreas fixas -->
-  <div class="wrap">
-    <!-- Cadeado atual no centro -->
-    <main class="stage" id="stage"></main>
-  </div>
+  <!-- Cadeado atual no CENTRO -->
+  <main class="stage" id="stage"></main>
 
-  <!-- Rodapé FIXO (sem bolinhas) -->
-  <footer>
-    <button class="reset" id="btnReset" title="Reiniciar">Reiniciar</button>
-  </footer>
-
-  <!-- Dica FIXA -->
-  <div class="help">Dica: as senhas não diferenciam maiúsculas/minúsculas.</div>
-
-  <!-- Dock FIXA (cadeados abertos) -->
+  <!-- CADEADOS ABERTOS (somem ao rolar p/ cima) -->
   <div class="dock" id="dock" aria-label="Cadeados abertos"></div>
+
+  <!-- Dica + Reiniciar (no fim da página) -->
+  <div class="tips-footer">
+    <div class="help">Dica: as senhas não diferenciam maiúsculas/minúsculas.</div>
+    <button class="reset" id="btnReset" title="Reiniciar">Reiniciar</button>
+  </div>
 
   <!-- Modal final -->
   <div class="modal" id="congrats">
@@ -182,15 +145,15 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    const LS_KEY = 'cadeados-fixed-v1';
+    const LS_KEY = 'cadeados-flow-v1';
     let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"idx":0}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
     const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
 
     const thumbs = document.getElementById('thumbs');
     const stage  = document.getElementById('stage');
-    const modal = document.getElementById('congrats');
     const dock = document.getElementById('dock');
+    const modal = document.getElementById('congrats');
 
     document.getElementById('btnReset').onclick = () => { state={idx:0}; save(); renderAll(); };
     document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
@@ -219,12 +182,12 @@
       </svg>`;
     }
 
-    /* Thumbs FIXAS: só os PRÓXIMOS (i > idx) */
+    /* Topo: só mostra os PRÓXIMOS (i > idx) — no fluxo */
     function renderTopbar(idx){
       thumbs.innerHTML = '';
       LOCKS.forEach((l, i) => {
-        if (i <= idx) return;              // remove atual e anteriores
-        const active = i === idx + 1;      // próximo a entrar no centro
+        if (i <= idx) return;              // some com atual e anteriores
+        const active = i === idx + 1;      // próximo (apenas para estilo visual)
         const t = document.createElement('div');
         t.className = 'thumb' + (active ? ' active' : '');
         t.id = 'thumb-' + i;
@@ -250,7 +213,7 @@
     function renderStage(){
       stage.innerHTML = '';
 
-      // terminou? controla o modal aqui (garante escondido até terminar)
+      // terminou? controla o modal (só aparece no fim)
       if (state.idx >= LOCKS.length) {
         modal.classList.add('show');
         return;
@@ -279,14 +242,13 @@
 
       function animateFlyToDock(){
         const big = document.getElementById('bigLock')?.querySelector('svg');
-        const destSlotId = 'dock-slot-' + state.idx;
-        const dest = document.getElementById(destSlotId);
+        const dest = document.getElementById('dock-slot-' + state.idx);
         if(!big || !dest){ state.idx += 1; save(); renderAll(); return; }
 
         const br = big.getBoundingClientRect();
         const dr = dest.getBoundingClientRect();
 
-        // Fantasma que voa do centro até a dock (ambas FIXAS)
+        // Fantasma que voa do centro até a dock
         const ghost = document.createElement('div');
         ghost.style.position = 'fixed';
         ghost.style.left = '0'; ghost.style.top = '0';
@@ -320,6 +282,7 @@
         if (!val) { status.innerHTML = '<span class="err">Digite a senha.</span>'; return; }
         if (val === normalize(current.senha)) {
           status.innerHTML = '<span class="ok">Cadeado aberto!</span>';
+          // mostra aberto e mantém o pulso até animar
           document.getElementById('bigLock').innerHTML = lockSVG({open:true});
           animateFlyToDock();
         } else {
@@ -334,15 +297,13 @@
 
     function renderAll(){
       ensureDockSlots(LOCKS.length);
-
       // Pré-preenche dock com os já abertos (ex.: recarregar a página)
       for(let i=0;i<state.idx;i++){
         const s = document.getElementById('dock-slot-'+i);
         if(s && !s.innerHTML) s.innerHTML = lockSVG({open:true});
       }
-
-      renderTopbar(state.idx);  // topo fixo com próximos
-      renderStage();            // centro + modal
+      renderTopbar(state.idx);  // só próximos, no fluxo
+      renderStage();            // atual, no fluxo
     }
 
     window.addEventListener('load', renderAll);
