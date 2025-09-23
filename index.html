@@ -14,7 +14,7 @@
     html,body{height:100%}
     body{
       margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
-      color:var(--text); background:#0b1d1a; overflow:hidden
+      color:var(--text); background:#0b1d1a; overflow:auto;  /* << permite rolar no mobile */
     }
 
     /* Fundo */
@@ -23,15 +23,15 @@
 
     /* Layout base: 4 linhas (header, thumbs, stage, footer) */
     .wrap{
-      height:100dvh; height:100vh;
-      display:grid; grid-template-rows:auto auto 1fr auto; min-height:100dvh;
+      min-height:100svh;          /* << resolve barras móveis no celular */
+      display:grid; grid-template-rows:auto auto 1fr auto;
     }
 
     header{ padding:12px 18px; display:flex; align-items:center; gap:10px }
     header .badge{ background:rgba(0,0,0,.45); padding:6px 10px; border-radius:999px; font-size:.85rem; color:var(--muted) }
     header h1{ margin:0; font-size:1.05rem; text-shadow:0 3px 12px rgba(0,0,0,.5) }
 
-    /* Faixa superior: miniaturas numeradas */
+    /* Faixa superior: miniaturas APENAS dos próximos cadeados */
     .thumbs{
       position:relative;
       display:flex; justify-content:center; gap:18px; padding:10px 14px 0;
@@ -62,7 +62,7 @@
     }
 
     /* Palco central: cadeado atual grandão */
-    .stage{ display:grid; place-items:center; min-height:58dvh; padding:12px; overflow:auto }
+    .stage{ display:grid; place-items:center; min-height:58dvh; padding:12px }
     .card{
       background:transparent; border:none; box-shadow:none;
       display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; padding:16px;
@@ -92,12 +92,12 @@
 
     /* Dica — canto inferior esquerdo (não cobre o Reiniciar) */
     .help{ position:fixed; left:14px; bottom:14px; background:rgba(0,0,0,.6); color:var(--muted); padding:8px 12px; border-radius:12px; font-size:.85rem }
-    @media (max-width:640px){ .help{ left:12px; bottom:12px } }
 
-    /* Dock (parte inferior) para cadeados ABERTOS */
+    /* Dock (parte inferior) para cadeados ABERTOS — não cobre o rodapé */
     .dock{
       position:fixed; left:50%; transform:translateX(-50%);
-      bottom:64px; display:flex; gap:14px; padding:6px 10px;
+      bottom:calc(84px + env(safe-area-inset-bottom));  /* << dá espaço p/ o rodapé no mobile */
+      display:flex; gap:14px; padding:6px 10px;
       background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.12); border-radius:12px;
       box-shadow:0 8px 18px rgba(0,0,0,.25);
       z-index:4;
@@ -120,8 +120,8 @@
       <h1>Operação Caixa Preta</h1>
     </header>
 
-    <!-- Miniaturas no topo -->
-    <div class="thumbs" id="thumbs" aria-label="Miniaturas dos cadeados"></div>
+    <!-- Miniaturas no topo (só próximos cadeados) -->
+    <div class="thumbs" id="thumbs" aria-label="Próximos cadeados"></div>
 
     <!-- Cadeado atual no centro -->
     <main class="stage" id="stage"></main>
@@ -157,7 +157,7 @@
       { id: 6, titulo: 'Cadeado 6', senha: '4310'    },
     ];
 
-    const LS_KEY = 'cadeados-dock-v1';
+    const LS_KEY = 'cadeados-dock-v2';
     let state = JSON.parse(localStorage.getItem(LS_KEY) || '{"idx":0}');
     const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
     const normalize = v => (v||'').toString().trim().toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
@@ -171,7 +171,7 @@
     document.getElementById('btnReset').onclick = () => { state={idx:0}; save(); render(); };
     document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
 
-    /* SVG — fechado agora BEM fechado; aberto com haste solta à direita */
+    /* SVG — fechado BEM fechado; aberto com haste solta */
     function lockSVG({open=false}={}){
       const gradTop = open ? '#bff5d7' : '#cfeee1';
       const gradBot = open ? '#31c788' : '#35b986';
@@ -187,14 +187,30 @@
       <svg viewBox="0 0 64 80" role="img" aria-label="Cadeado" xmlns="http://www.w3.org/2000/svg">
         <defs>${ringGrad}${bodyGrad}</defs>
         ${open
-          // ABERTO: haste “solta” (sem descer no lado direito)
           ? `<path d="M16 26 v-8 a16 16 0 0 1 32 0" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
-          // FECHADO: haste descendo dos dois lados e encostando no corpo
           : `<path d="M16 28 v-8 a16 16 0 0 1 32 0 v8" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-linecap="round"/>`
         }
         <rect x="8" y="28" width="48" height="42" rx="10" fill="url(#bodyGrad)" stroke="#0b3b2d" stroke-width="2" />
         <circle cx="32" cy="46" r="4" fill="#0b3b2d"/>
       </svg>`;
+    }
+
+    /* Mostra SOMENTE os próximos cadeados (i > idx) no topo */
+    function renderTopbar(openedCount){
+      thumbs.innerHTML = '';
+      LOCKS.forEach((l, i) => {
+        if (i <= openedCount) return;             // esconde o atual e os já abertos
+        const active = i === openedCount + 1;     // o próximo a entrar no centro
+        const t = document.createElement('div');
+        t.className = 'thumb' + (active ? ' active' : '');
+        t.id = 'thumb-' + i;
+        t.innerHTML = lockSVG({open:false});
+        const badge = document.createElement('div');
+        badge.className = 'num';
+        badge.textContent = (i+1);
+        t.appendChild(badge);
+        thumbs.appendChild(t);
+      });
     }
 
     function ensureDockSlots(n){
@@ -205,23 +221,6 @@
         s.id = 'dock-slot-' + i;
         dock.appendChild(s);
       }
-    }
-
-    function renderTopbar(openedCount){
-      thumbs.innerHTML = '';
-      LOCKS.forEach((l, i) => {
-        const opened = i < openedCount;
-        const active = i === openedCount;
-        const t = document.createElement('div');
-        t.className = 'thumb' + (active ? ' active' : '');
-        t.id = 'thumb-' + i;
-        t.innerHTML = lockSVG({open: opened});
-        const badge = document.createElement('div');
-        badge.className = 'num';
-        badge.textContent = (i+1);
-        t.appendChild(badge);
-        thumbs.appendChild(t);
-      });
     }
 
     function renderStage(){
@@ -288,7 +287,7 @@
           ghost.remove();
           dest.innerHTML = lockSVG({open:true});
           state.idx += 1; save();
-          render();
+          render(); // << re-render: some do topo e aparece o próximo
         };
       }
 
@@ -310,17 +309,15 @@
     }
 
     function render(){
-      // cria “slots” na dock (um por cadeado)
       ensureDockSlots(LOCKS.length);
 
-      const openedCount = state.idx;
-      // pré-preenche dock com os já abertos (ex.: ao recarregar)
-      for(let i=0;i<openedCount;i++){
+      // pré-preenche dock com os já abertos (ao recarregar)
+      for(let i=0;i<state.idx;i++){
         const s = document.getElementById('dock-slot-'+i);
         if(s && !s.innerHTML) s.innerHTML = lockSVG({open:true});
       }
 
-      renderTopbar(openedCount);
+      renderTopbar(state.idx);  // << só próximos no topo
       renderStage();
     }
 
